@@ -1,150 +1,110 @@
-# K-에듀파인 협의체 안건 찾기
+# K-AGORA · 협의체 안건 찾기
 
-시·도 업무협의체의 과거 안건을 검색하고, 비슷한 안건과 당시 검토 결과를 확인하는 챗봇형 웹 시제품입니다.
+K-에듀파인 시·도 업무협의체의 과거 안건과 당시 검토 결과를 찾아보는 웹 시제품입니다. 궁금한 내용을 입력하면 비슷한 안건을 최대 3건까지 보여줍니다.
 
-현재는 `app/page.tsx`에 들어 있는 예시 데이터로 동작합니다. 실제 협의체 문서 연동 전까지는 화면과 검색 흐름을 검토하는 용도로 사용할 수 있습니다.
+현재는 **코드에 포함된 예시 안건 5건**으로 동작합니다. 실제 협의체 문서나 외부 AI 서비스는 연결되어 있지 않습니다.
 
-## 로컬 실행
+## 주요 기능
 
-### 준비물
+- 문장 또는 키워드로 유사 안건 검색
+- 안건별 요청 내용, 회의명, 날짜, 지역, 업무 분야 확인
+- 반영 상태와 당시 검토 결과 확인
+- 추천 검색어와 사이드바의 검색 예시 선택
+- 데스크톱과 모바일 화면에 대응하는 레이아웃
 
-- Node.js `22.13.0` 이상
+## 시작하기
+
+### 실행 환경
+
+- Node.js **22.13.0 이상**과 npm
 - Git
+- 설치·빌드 스크립트용 Linux 환경: Bash, GNU `timeout`, `flock`, `curl`, `sha256sum`
 
-### 실행 방법
+이 저장소는 Node.js 24.19.0과 npm 11.9.0을 사용하는 Linux 환경에서 설치와 빌드를 확인했습니다. Windows에서는 WSL 사용을 권장합니다. macOS의 기본 도구만으로는 포함된 Linux용 스크립트를 그대로 실행할 수 없습니다.
+
+### 설치 및 개발 서버 실행
 
 ```bash
-git clone <내 GitHub 저장소 주소>
-cd k-edu-agenda-finder
-npm install
+git clone https://github.com/wtg1021/K-AGORA.git
+cd K-AGORA
+npm run install:ci
 npm run dev
 ```
 
-터미널에 표시되는 로컬 주소를 브라우저에서 열면 됩니다. 종료할 때는 터미널에서 `Ctrl+C`를 누르세요.
+터미널에 표시되는 주소로 접속하고, 서버를 종료하려면 `Ctrl+C`를 누르세요. 현재 시제품 실행에는 API 키, 데이터베이스 설정, Cloudflare 로그인이 필요하지 않습니다.
 
-## GitHub에 처음 올리기
+`install:ci`는 `package-lock.json`에 고정된 의존성을 `npm ci`로 설치하며, 다운로드 무결성 확인과 설치 시간 제한을 적용합니다.
 
-GitHub에서 빈 저장소를 만든 뒤 이 프로젝트 폴더에서 실행합니다.
-
-```bash
-git remote rename origin sites
-git remote add origin https://github.com/<아이디>/<저장소명>.git
-git push -u origin main
-```
-
-기존 `origin`은 ChatGPT Sites 소스 저장소를 가리키므로 `sites`라는 이름으로 보존합니다. 이후 작업은 보통 아래 순서로 관리할 수 있습니다.
+클라우드 환경에서 도구의 홈·임시 경로를 프로젝트 내부로 제한해야 한다면 다음 명령으로 실행할 수 있습니다.
 
 ```bash
-git add .
-git commit -m "변경 내용 설명"
-git push origin main
+bash scripts/sites-env.sh -- npm run dev -- --port 3000 --strictPort
 ```
 
-## 주요 수정 위치
+## 개발 명령어
 
-- `app/page.tsx`: 화면, 예시 안건 데이터, 검색 로직
-- `app/globals.css`: 색상과 공통 스타일
-- `app/layout.tsx`: 사이트 제목과 메타데이터
-- `public/favicon.svg`: 브라우저 아이콘
-- `.openai/hosting.json`: ChatGPT Sites 프로젝트 연결 정보(비밀키는 아님)
+아래 명령은 모두 저장소 루트에서 실행합니다.
 
-## 배포용 빌드 확인
+| 명령어 | 용도 |
+| --- | --- |
+| `npm run install:ci` | 잠금 파일 기준 의존성 설치 |
+| `npm run dev` | Vite/Vinext 개발 서버 실행 |
+| `npm run build` | `dist/`에 빌드 결과 생성 |
+| `npm run start` | 빌드된 애플리케이션 실행 |
+| `npm run lint` | ESLint 검사 |
+| `npm test` | 빌드 후 전체 테스트 실행 |
+| `npm run db:generate` | DB 스키마 변경 시 Drizzle 마이그레이션 생성 |
+
+`npm run start`를 사용하려면 먼저 `npm run build`를 실행해야 합니다. 빌드나 서버 실행만으로 공개 사이트에 배포되지는 않습니다.
+
+## 검색 방식과 현재 한계
+
+검색은 브라우저에서 수행합니다. 입력한 문장을 각 안건의 **제목·요약·키워드**와 문자열로 비교하고, 점수가 높은 순서대로 최대 3건을 표시합니다.
+
+실제 운영이나 기능 확장 전에는 다음 사항을 고려해야 합니다.
+
+- **데이터:** 실제 예시 안건은 5건입니다. 화면 상단의 ‘예시 데이터 128건’은 고정 문구로, 데이터 수와 일치하지 않습니다.
+- **검색 결과:** 관련도가 낮아도 상위 3건을 표시합니다. 검색 결과가 없다는 안내는 아직 없습니다.
+- **일치도:** 화면의 백분율은 표시 순서에 따른 고정값이며, 검색 정확도를 측정한 수치가 아닙니다.
+- **검색 기록:** 사이드바의 ‘최근 검색’은 고정된 예시입니다. 사용자의 검색 이력을 저장하지 않습니다.
+- **버튼:** ‘새로운 검색’ 버튼에는 아직 동작이 연결되어 있지 않습니다.
+- **문서·AI 연동:** 문서 업로드, 영구 저장, 의미 기반 검색, AI 답변 생성은 구현되어 있지 않습니다.
+
+## 프로젝트 구조
+
+| 경로 | 역할 |
+| --- | --- |
+| `app/page.tsx` | 검색 화면, 예시 안건, 검색 점수 계산 |
+| `app/layout.tsx` | 페이지 제목, 설명, 언어, 아이콘 설정 |
+| `app/globals.css` | 공통 스타일과 색상 |
+| `components/ui/` | 공통 UI 컴포넌트 |
+| `public/` | 파비콘 등 정적 파일 |
+| `tests/` | 렌더링 및 UI 컴포넌트 테스트 |
+| `scripts/` | 설치·빌드·프로젝트 내부 실행 환경 설정 |
+| `vite.config.ts` | Vinext와 Cloudflare 로컬 실행 설정 |
+| `worker/index.ts` | Cloudflare Worker 진입점 |
+| `db/`, `drizzle/`, `examples/d1/` | 향후 DB 연동용 스키마·마이그레이션·예제 |
+| `.openai/hosting.json` | 원본 ChatGPT Sites 프로젝트와 선택적 D1/R2 연결 정보 |
+
+주요 기술은 React 19, TypeScript, Vinext/Vite, Tailwind CSS 4입니다. Next.js App Router 형식의 코드를 Vinext로 실행합니다. Drizzle과 Cloudflare D1/R2 관련 파일도 포함되어 있지만, 현재 검색 기능에서는 사용하지 않습니다.
+
+## 검증 상태
+
+클라우드 환경으로 소스를 가져온 시점에 확인한 결과입니다. 이후 변경 사항은 아래 명령으로 다시 검사하세요.
 
 ```bash
-npm run build
+npm run lint
+npm test
 ```
 
-`npm run build`는 Linux/macOS 또는 GitHub Actions 같은 Linux 환경에서 실행하는 것을 권장합니다. Windows에서는 로컬 개발용 `npm run dev`를 사용할 수 있습니다.
+- **설치·빌드·린트:** 통과
+- **페이지 응답:** HTTP 200, 초기 검색 결과 카드 3건과 스타일·파비콘 응답 확인
+- **기존 테스트:** 전체 5개 중 4개 통과, 1개 실패
 
-## 현재 검색 방식
+실패한 `tests/rendered-html.test.mjs`는 `codex-preview=development` 메타 태그를 기대하지만, 현재 `app/layout.tsx`에는 해당 태그가 없습니다. 이 소스와 테스트의 불일치 때문에 `npm test`는 실패로 종료됩니다. 브라우저에서 검색어 입력·버튼 클릭까지 자동 검증한 상태는 아닙니다.
 
-사용자가 입력한 문장과 각 안건의 제목, 요약, 키워드를 단순 비교해 유사한 순서로 최대 3건을 보여줍니다. 실제 운영용으로 확장하려면 문서 업로드, 데이터베이스 저장, 의미 기반 검색을 별도로 연결해야 합니다.
+## 배포 관련 참고
 
----
+이 프로젝트는 ChatGPT Sites에서 내보낸 소스를 바탕으로 합니다. `.openai/hosting.json`에는 원본 프로젝트 연결 정보가 남아 있으며, GitHub에 푸시한다고 기존 공개 사이트가 자동으로 갱신되지는 않습니다.
 
-## Sites 개발 참고
-
-## Sites Lifecycle
-
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
-
-This starter does not use `wrangler.jsonc`.
-
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
-
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
-
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from `oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive `oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty `name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by `oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send anonymous visitors through Sign in with ChatGPT.
-- In a Server Component, start sign-in with `<a href={chatGPTSignInPath(returnTo)} target="_top">`. The auth helper module is server-only; do not import it into a Client Component.
-- Do not use `fetch`, XHR, a client-side router, or a framework link that can prefetch the sign-in route. SIWC must start as a top-level navigation.
-- Never request the AuthAPI authorization endpoint directly. The dispatch-owned `/signin-with-chatgpt` route must start the SIWC flow.
-- Use `chatGPTSignOutPath(returnTo)` for browser sign-out links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the OAuth cookies, and identity header injection. Do not implement app routes for those reserved paths. Routes that do not import and call the helper remain anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the Sites hosting platform's access policy controls for workspace-wide restrictions, or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Diagnostic Commands
-
-- `npm run install:ci`: perform the one bounded lockfile install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build the deployable Sites artifact
-- `npm run start`: start the built Vinext application
-- `npm test`: build and verify the rendered development-preview metadata
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-Use build commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
-
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+별도 배포를 구성할 때는 선택한 호스팅 환경에 맞춰 Worker 진입점, 정적 자산, 필요 시 D1/R2 바인딩을 설정해야 합니다. 포함된 ChatGPT 로그인 헬퍼는 Sites 플랫폼 연동용이며, 독립적인 로그인 서버를 제공하지 않습니다.
