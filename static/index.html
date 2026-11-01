@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="K-에듀파인 업무협의체 안건과 검토 이력을 찾아보는 업무 지식 검색"><title>K-AGORA · 협의체 안건 검색</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<aside class="sidebar">
+<a class="brand" href="/" aria-label="K-AGORA 홈"><span class="logo">K</span><span>K-AGORA<small>업무협의체 지식 아카이브</small></span></a>
+<button id="new-search" class="new-search">＋ 새로운 검색</button>
+<div class="nav-label">WORKSPACE</div><div class="active-nav">◈ &nbsp; 안건 검색 <span>↗</span></div>
+<div class="nav-label history-label">최근 검색 <button id="clear-history" class="text-button">지우기</button></div><ul id="history" class="history"></ul>
+<div class="sidebar-bottom"><div class="tip-icon">✧</div><strong>기억나는 표현 그대로</strong><p>업무명이나 불편했던 상황을<br>질문으로 입력해 보세요.</p><button id="manage" class="management-button">안건 등록·관리 ↗</button><small>내부 검토용 시제품 · v1.0</small></div>
+</aside>
+<main>
+<header><div class="breadcrumb">지식 아카이브 <span>/</span> <strong>협의체 안건 검색</strong></div><div class="header-meta"><span class="dot"></span><span id="total-count">불러오는 중</span><span class="demo-tag">시제품</span></div></header>
+<div class="workspace">
+<section class="intro"><div class="eyebrow">YOUR TEAM’S COLLECTIVE KNOWLEDGE</div><h1>같은 고민, 이전에는<br>어떻게 논의했을까요<span>?</span></h1><p>흩어져 있던 협의체 안건과 검토 이력을 한곳에서.<br>궁금한 내용을 물어보고, 과거의 논의를 이어가세요.</p></section>
+<section class="search-box" aria-label="안건 검색"><form id="search-form"><label for="query" class="sr-only">질문 또는 검색어</label><textarea id="query" rows="2" maxlength="1000" placeholder="법인카드 사용내역을 한 번에 등록하는 안건이 전에 있었어?"></textarea><div class="search-bottom"><span>✧ &nbsp; 기억나는 업무나 요구사항을 입력하세요</span><button type="submit" id="search-button">안건 찾기 <span>↗</span></button></div></form></section>
+<div class="examples"><span>이렇게 물어보세요</span><button data-query="법인카드 한꺼번에 등록">법인카드 일괄 등록 ↗</button><button data-query="담당자 변경 권한 인수인계">담당자 권한 인수인계 ↗</button><button data-query="급여 소급 내역 엑셀">급여 소급 내역 조회 ↗</button></div>
+<section class="results-section"><div class="section-title"><div><span class="section-icon">≡</span><h2 id="results-title">등록된 안건 둘러보기</h2><span id="result-count" class="count">0</span></div><button id="reset-filters" class="text-button">조건 초기화 ↻</button></div>
+<form id="filters" class="filters"><label><span>연도</span><select name="year" id="filter-year"><option value="">전체 연도</option></select></label><label><span>분기</span><select name="quarter"><option value="">전체 분기</option><option value="1">1분기</option><option value="2">2분기</option><option value="3">3분기</option><option value="4">4분기</option></select></label><label><span>시·도</span><select name="region" id="filter-region"><option value="">전체 지역</option></select></label><label><span>업무 분야</span><select name="field" id="filter-field"><option value="">전체 분야</option></select></label><label><span>반영 상태</span><select name="status" id="filter-status"><option value="">전체 상태</option></select></label></form>
+<div id="answer" class="answer" hidden></div><p id="feedback" role="status" aria-live="polite"></p><div id="results" class="results"></div><button id="load-more" class="load-more" hidden>안건 더 보기</button>
+</section>
+<footer><span>자료를 근거로 판단하세요. 검색 결과는 최종 검토를 대신하지 않습니다.</span><span>동의어 확장 · 텍스트 관련도 검색</span></footer>
+</div>
+</main>
+<dialog id="detail-dialog"><div class="dialog-top"><span class="eyebrow">AGENDA DETAIL</span><button class="close-dialog icon-button" aria-label="상세 닫기">×</button></div><div id="detail-content"></div></dialog>
+<dialog id="manage-dialog"><div class="dialog-top"><div><span class="eyebrow">KNOWLEDGE MANAGEMENT</span><h2>안건 등록·관리</h2></div><button class="close-dialog icon-button" aria-label="관리 닫기">×</button></div><p class="muted">관리자 키는 메모리에만 보관하며 서버 재접속 시 다시 입력합니다.</p><label class="token-label">관리자 키 <input id="admin-token" type="password" autocomplete="off" placeholder="서버에 설정한 ADMIN_TOKEN"></label><div class="management-tools"><button id="new-agenda">새 안건 작성</button><button id="export">전체 JSON 내보내기</button><label class="file-button">JSON 가져오기<input id="import-file" type="file" accept=".json,application/json"></label></div><p class="muted">가져오기는 JSON 배열(최대 500건·2MB)을 지원합니다. 안건번호 중복 시 전체 취소됩니다. HWP·PDF·Word 자동 추출은 지원하지 않습니다.</p><form id="agenda-form"><input type="hidden" name="id"><div id="editor-fields" class="editor-fields"></div><p id="manage-feedback" role="status"></p><div class="editor-actions"><button type="button" id="delete-agenda" class="danger" hidden>이 안건 삭제</button><button type="submit" class="primary">안건 저장</button></div></form></dialog>
+</body></html>

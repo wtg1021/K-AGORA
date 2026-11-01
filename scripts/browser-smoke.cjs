@@ -1,0 +1,28 @@
+const {chromium}=require('playwright');
+(async()=>{
+ require('node:fs').mkdirSync('.test-artifacts',{recursive:true});
+ const browser=await chromium.launch({...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),headless:true,args:['--no-sandbox']});
+ const page=await browser.newPage({viewport:{width:1440,height:1100}});let errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto((process.env.BASE_URL || 'http://127.0.0.1:8000')+'/');await page.getByText('등록 안건 8건',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'법인카드 일괄 등록 ↗',exact:true}).click();
+ await page.locator('#answer').filter({hasText:'법인카드 사용내역 일괄 등록'}).waitFor();
+ const first=await page.locator('.card-title').first().textContent();if(first!=='법인카드 사용내역 일괄 등록')throw Error('Wrong first search result');
+ await page.locator('.card-title').first().click();await page.locator('#detail-dialog[open]').waitFor();
+ await page.getByRole('button',{name:'상세 닫기'}).click();
+ await page.locator('#query').fill('양자컴퓨터 우주망원경');await page.locator('#search-button').click();await page.locator('.empty-state').waitFor();
+ await page.getByRole('button',{name:'새로운 검색'}).click();await page.locator('#filter-year').selectOption('2025');await page.locator('[name=quarter]').selectOption('2');
+ await page.waitForFunction(()=>document.querySelectorAll('.card').length===1);
+ await page.getByRole('button',{name:'조건 초기화'}).click();await page.waitForFunction(()=>document.querySelector('#result-count').textContent==='8');
+ await page.locator('#manage').click();await page.locator('#admin-token').fill(process.env.TEST_ADMIN_TOKEN || 'ui-test-only');
+ const form=page.locator('#agenda-form');
+ for(const [name,value] of Object.entries({number:'BROWSER-01',title:'브라우저 등록 검증',meeting:'테스트 협의체',date:'2026-11-01',region:'서울',field:'시스템',request:'브라우저 입력 및 영속성 검증'}))await form.locator(`[name=${name}]`).fill(value);
+ await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/agendas') && r.request().method()==='POST' && r.status()===201),form.getByRole('button',{name:'안건 저장'}).click()]);await page.locator('#manage-feedback').filter({hasText:'안건을 저장했습니다.'}).waitFor();
+ await form.locator('[name=title]').fill('브라우저 수정 검증');await Promise.all([page.waitForResponse(r=>r.url().includes('/api/agendas/') && r.request().method()==='PUT' && r.status()===200),form.getByRole('button',{name:'안건 저장'}).click()]);
+ await page.waitForFunction(()=>document.querySelector('#search-button').disabled===false);
+ page.once('dialog',d=>d.accept());await page.locator('#delete-agenda').click();await page.locator('#manage-feedback').filter({hasText:'삭제했습니다.'}).waitFor();
+ await page.getByRole('button',{name:'관리 닫기'}).click();await page.waitForFunction(()=>document.querySelector('#total-count').textContent==='등록 안건 8건');
+ await page.screenshot({path:'.test-artifacts/desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'.test-artifacts/mobile.png',fullPage:true});
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Mobile horizontal overflow');
+ if(errors.length)throw Error(errors.join('\n'));console.log('PASS: search, no results, filters, detail, CRUD, desktop/mobile, no browser errors');await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});
