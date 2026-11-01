@@ -1,0 +1,20 @@
+{
+  "source_file": "★ 2026년 제2회 K-에듀파인 학교회계 업무협의회 협의체 자료_탑재용.pdf",
+  "checks": {
+    "detailed_agendas": 37,
+    "unique_numbers": 37,
+    "detailed_pdf_pages_covered": 106,
+    "import_ready": 27,
+    "status_confirmation_needed": 10,
+    "schema_validation": "passed",
+    "temporary_sqlite_import": "passed (27 records)",
+    "persistence_reopen": "passed (27 records)",
+    "representative_searches_top3": "3/3 passed",
+    "import_bytes": 115905
+  },
+  "not_verified": [
+    "모든 화면 캡처·도표 내부 텍스트의 완전 전사는 미검증",
+    "실제 회의 후 의결·최신 운영 반영 상태",
+    "참고자료의 직전 회의 안건 54건을 별도 안건 객체로 구조화하지 않음"
+  ]
+}
