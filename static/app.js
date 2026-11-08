@@ -32,6 +32,7 @@ for(const [heading,entries] of groups){
    const group=node('fieldset',undefined,'business-field wide');group.append(node('legend',label+' *'),box,node('small','해당하는 업무를 모두 선택하세요. 기존 업무명도 유지됩니다.'));grid.append(group);continue;
   }
   input.required=!!required;
+  if(name==='target_menu')input.placeholder='지출관리 > 지출처리 > 지출품의 > 품의등록/품의목록';
   if(input.tagName==='INPUT')input.type=type||'text';
   if(choices)choices.forEach(value=>input.append(new Option(value,value)));
   if(input.tagName!=='SELECT')input.maxLength=20000;
@@ -114,7 +115,7 @@ async function detail(id){
   const info=node('dl',undefined,'form-info');
   for(const [label,value] of [['업무',a.field],['기관명',a.organization],['구분',a.submission_type],['제안 시·도',a.region],['개최 시·도',a.meeting_region],['관리번호',a.number]]){info.append(node('dt',label),node('dd',value||'미등록'));}root.append(info);
   const section=(label,value,cls='')=>{const box=node('section',undefined,'form-section '+cls);box.append(node('h3',label),node('p',cls==='source-text'?(value||'미등록'):readable(value||'미등록',a)));return box;};
-  root.append(section('요구사항',a.request,'request-section'),section('대상 메뉴',a.target_menu));
+  root.append(section('요구사항',a.request,'request-section'),section('대상 메뉴',AgoraText.menu(a.target_menu)));
   const current=node('div',undefined,'detail-grid');current.append(section('현황',a.situation),section('문제점',a.problem));root.append(current);
   for(const [key,label] of [['improvement_plan','개선방안'],['effect','기대효과'],['additional_opinions','추가 의견']])root.append(section(label,a[key]));
   const review=node('section',undefined,'form-section keris-section');const title=node('div',undefined,'review-heading');title.append(node('h3','KERIS 검토의견'),badge(a.review_status));review.append(title);
@@ -131,13 +132,13 @@ async function detail(id){
   if(Array.isArray(pages))for(const page of pages){source.append(section('PDF '+page.pdf_page+'쪽',page.text,'source-text'));}
   root.append(source);
   const actions=node('div',undefined,'detail-actions'),copy=node('button','검토 내용 복사'),edit=node('button','이 안건 수정');
-  copy.onclick=async()=>{try{await navigator.clipboard.writeText(fields.map(([key,label])=>`${label}: ${readable(a[key]||'미등록',a)}`).join('\n'));copy.textContent='복사했습니다';}catch{copy.textContent='브라우저에서 복사를 허용해 주세요';}};
+  copy.onclick=async()=>{try{await navigator.clipboard.writeText(fields.map(([key,label])=>`${label}: ${key==='target_menu'?(AgoraText.menu(a[key])||'미등록'):readable(a[key]||'미등록',a)}`).join('\n'));copy.textContent='복사했습니다';}catch{copy.textContent='브라우저에서 복사를 허용해 주세요';}};
   edit.onclick=()=>{$('#detail-dialog').close();openEditor(a);};actions.append(copy,edit);root.append(actions);$('#detail-dialog').showModal();
  }catch(e){$(catalogue.active?'#all-feedback':'#feedback').textContent=e.message;}
 }
 function openEditor(a=null){
  const form=$('#agenda-form');form.reset();form.elements.id.value=a?a.id:'';
- if(a)fields.filter(([key])=>key!=='field').forEach(([key])=>{form.elements[key].value=a[key]||'';});
+ if(a)fields.filter(([key])=>key!=='field').forEach(([key])=>{form.elements[key].value=key==='target_menu'?AgoraText.menu(a[key]):a[key]||'';});
  const selected=splitFields(a?.field);
  for(const value of selected)if(![...document.querySelectorAll('[name=business_field]')].some(i=>i.value===value))addBusinessOption($('#business-options'),value);
  document.querySelectorAll('[name=business_field]').forEach(i=>i.checked=selected.includes(i.value));
@@ -157,6 +158,7 @@ document.querySelectorAll('.close-dialog').forEach(b=>b.onclick=()=>b.closest('d
 $('#agenda-form').onsubmit=async e=>{
  e.preventDefault();const form=e.target,data=new FormData(form),values=Object.fromEntries(data);
  const selected=data.getAll('business_field');if(!selected.length){$('#manage-feedback').textContent='업무를 한 개 이상 선택하세요.';return;}
+ values.target_menu=AgoraText.menu(values.target_menu);
  values.field=selected.join(' · ');delete values.business_field;const id=values.id;delete values.id;
  const button=form.querySelector('[type=submit]');button.disabled=true;
  try{const saved=await api('/api/agendas'+(id?'/'+encodeURIComponent(id):''),{method:id?'PUT':'POST',auth:true,body:JSON.stringify(values)});form.elements.id.value=saved.id;$('#delete-agenda').hidden=false;$('#manage-feedback').textContent='안건을 저장했습니다.';await metadata();await search();}catch(e){$('#manage-feedback').textContent=e.message;}finally{button.disabled=false;}

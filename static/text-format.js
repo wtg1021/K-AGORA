@@ -44,7 +44,25 @@
   }
   return result.join('\n\n').trim();
  }
- const api={format,registerItems};
+ // A slash separates sibling screens; each newline starts a separate menu path.
+ function menu(value){
+  const lines=String(value??'').replace(/\r\n?/g,'\n').split('\n');
+  const paths=[];
+  for(let line of lines){
+   line=line.replace(/\[[\s/|>–—-]*\]/g,'').trim();
+   if(!line)continue;
+   line=line.replace(/^[①-⑳]\s*/, '').replace(/(?:[–—－→⇒〉›»]+|\s+-\s+)/g,' > ');
+   const trailing=/[>]\s*$/.test(line),leading=/^\s*[>]/.test(line);
+   const stages=line.split(/\s*>+\s*/).map(stage=>stage.trim().replace(/^\[([^\]]+)\]$/, '$1').trim().replace(/\s*[,，]\s*/g,'/').replace(/\s*\/\s*/g,'/').replace(/[ \t]+/g,' ')).filter(Boolean);
+   const path=stages.join(' > ');if(!path)continue;
+   const previous=paths[paths.length-1];
+   if(previous&&(leading||previous.continues)){
+    previous.text+=(previous.continues||leading?' > ':' ')+path;previous.continues=trailing;
+   }else paths.push({text:path,continues:trailing});
+  }
+  return paths.map(path=>path.text).join('\n');
+ }
+ const api={format,registerItems,menu};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
  else root.AgoraText=api;
 })(globalThis);
