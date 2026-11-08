@@ -1,0 +1,61 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "K-AGORA: 예시 데이터로 실행",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "agora.server",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "HOST": "127.0.0.1",
+        "PORT": "8000",
+        "DATABASE_PATH": "${workspaceFolder}/data/agora.sqlite3",
+        "SEED_DEMO": "true",
+        "ADMIN_TOKEN": ""
+      }
+    },
+    {
+      "name": "K-AGORA: 관리자 모드",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "agora.server",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "HOST": "127.0.0.1",
+        "PORT": "8000",
+        "DATABASE_PATH": "${workspaceFolder}/data/agora.sqlite3",
+        "SEED_DEMO": "true",
+        "ADMIN_TOKEN": "${input:adminToken}"
+      }
+    },
+    {
+      "name": "K-AGORA: 실제 자료용 빈 DB",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "agora.server",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "HOST": "127.0.0.1",
+        "PORT": "8000",
+        "DATABASE_PATH": "${workspaceFolder}/data/local-agendas.sqlite3",
+        "SEED_DEMO": "false",
+        "ADMIN_TOKEN": "${input:adminToken}"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "adminToken",
+      "type": "promptString",
+      "description": "사용할 관리자 키를 입력하세요. 브라우저 관리 화면에도 같은 키를 입력합니다.",
+      "password": true
+    }
+  ]
+}
