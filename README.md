@@ -16,7 +16,15 @@
 - SQLite 영구 저장, 안건번호 중복 방지, 일괄 가져오기 트랜잭션
 - 데스크톱·모바일 반응형 화면
 
-**데이터는 가상 예시 8건입니다. 실제 교육청의 회의·검토 결과가 아닙니다.** 검색은 한국어 동의어 확장과 텍스트 관련도 계산입니다. 임베딩·LLM 기반 의미 검색이나 생성형 AI는 사용하지 않습니다. 점수는 정확도 백분율이 아니며 낮은 점수의 결과는 담당자가 확인해야 합니다. 답변은 검색 1위 안건의 저장된 내용을 조합합니다.
+**예시 실행은 가상 안건 8건, 실제 자료 실행은 첨부 자료집의 안건 37건입니다.** 자료집의 사전 검토의견을 회의 후 확정 결과로 간주하지 않습니다. 검색은 한국어 동의어 확장과 텍스트 관련도 계산입니다. 임베딩·LLM 기반 의미 검색이나 생성형 AI는 사용하지 않습니다. 점수는 정확도 백분율이 아니며 낮은 점수의 결과는 담당자가 확인해야 합니다. 답변은 검색 1위 안건의 저장된 내용을 조합합니다.
+
+## 첨부 협의체 양식과 실제 자료 37건
+
+첨부 자료집에 맞춰 **기관명·업무(복수 선택)·대상 메뉴·현황·문제점·개선방안·기대효과·추가 의견·KERIS 검토의견·출처**를 구분합니다. KERIS 사전 검토(현행유지/협의필요/개선예정)와 실제 반영 상태는 별도로 관리합니다.
+
+최신 코드를 받은 후 VS Code의 **실행 및 디버그 → K-AGORA: 협의체 실제 자료 37건 → F5**를 선택하세요. 시작 시 사용할 관리자 키를 입력하고 브라우저에서 **http://127.0.0.1:8000** 을 엽니다. 자료 37건은 별도 DB `data/school-accounting-2026-02.sqlite3`에 최초 등록되며 기존 DB를 유지합니다. 관리 화면에는 시작할 때 입력한 키를 입력합니다.
+
+기존 사용자 DB는 시작 시 새 항목을 보충하는 DB v2로 자동 이전하며 ID와 내용을 보존합니다. 원본 자료집의 목록/본문 표기 차이, 처리 상태 원칙과 가져오기 방법은 [협의체 양식·DB 안내](docs/meeting-form-schema.md)를 참고하세요. 기존 예시 데이터 8건 실행도 계속 지원합니다.
 
 ## VS Code로 개발·실행하기 (권장)
 
@@ -36,6 +44,7 @@ VS Code에서 이 프로젝트를 열고 F5로 실행할 수 있습니다. Pytho
 
 | 실행 구성 | 용도 |
 | --- | --- |
+| `K-AGORA: 협의체 실제 자료 37건` | 첨부 자료집 양식의 실제 37건을 별도 DB에서 실행. 관리자 키 입력 |
 | `K-AGORA: 예시 데이터로 실행` | 가상 안건 8건으로 검색 화면 확인. 관리 기능은 꺼짐 |
 | `K-AGORA: 관리자 모드` | 예시 DB에서 안건 등록·수정·삭제 및 JSON 입출력. 시작할 때 관리자 키 입력 |
 | `K-AGORA: 실제 자료용 빈 DB` | 별도 `data/local-agendas.sqlite3` 사용. 예시 데이터 없이 시작하며 관리자 키 입력 |
@@ -167,7 +176,8 @@ SEED_DEMO=false DATABASE_PATH=data/local-agendas.sqlite3 python3 -m agora.server
 | `HOST` | `127.0.0.1` | 현재 PC에서만 접근하는 기본 바인딩 |
 | `PORT` | `8000` | 서버 포트 |
 | `DATABASE_PATH` | `data/agora.sqlite3` | SQLite 파일 위치. 상대 경로는 실행 폴더 기준 |
-| `SEED_DEMO` | `true` | 첫 초기화 때 가상 예시 8건 추가 |
+| `SEED_DEMO` | `true` | 첫 초기화 때 초기 자료 등록 (`false`이면 등록 안 함) |
+| `SEED_DATA_PATH` | 미설정 | 최초 초기화 자료 JSON 경로. 미설정 시 예시 8건, 실제 자료 구성은 `documents/2026-school-accounting-02/01-agendas-master-37.json` |
 | `ADMIN_TOKEN` | 미설정 | 없으면 관리 API 사용 불가 |
 
 ### 자주 생기는 문제
@@ -200,7 +210,7 @@ python3 -m unittest discover -s tests -v
 
 GitHub push/PR에서도 같은 테스트를 실행하도록 Actions 워크플로를 포함했습니다.
 
-서버·DB 임시 생성 후 검색, 무관한 질문, 필터, CRUD, 재연결 영속성, 입력 검증, 관리 인증, JSON 입출력, 중복 시 전체 롤백 등 **11개 테스트**를 실행합니다.
+서버·DB 임시 생성 후 검색, 무관한 질문, 필터, CRUD, 재연결 영속성, 입력 검증, 관리 인증, JSON 입출력, 중복 시 전체 롤백 등의 테스트를 실행합니다.
 
 ### 선택: 브라우저 자동 테스트 (macOS / Linux)
 
@@ -222,14 +232,26 @@ NODE_PATH=/tmp/k-agora-browser-tools/node_modules node scripts/browser-smoke.cjs
 
 ## 데이터 가져오기
 
-관리 화면에서 JSON 배열 파일을 선택합니다. 전체 JSON 내보내기로 데이터를 백업할 수 있습니다. 백업에는 안건의 내부 내용이 포함되므로 안전하게 보관하세요. 전체 필드는 [data/sample-agendas.json](data/sample-agendas.json)을 참고하세요. ID·연도·분기는 서버가 생성합니다. 같은 안건번호가 있거나 한 건이라도 형식이 잘못되면 **전체 취소**됩니다. 파일당 최대 500건 / 2MB입니다.
+관리 화면에서 JSON 배열 또는 `document`/`records`를 가진 전체 master JSON 파일을 선택합니다. 전체 JSON 내보내기로 데이터를 백업할 수 있습니다. 백업에는 안건의 내부 내용이 포함되므로 안전하게 보관하세요. 기본 배열 예시는 [data/sample-agendas.json](data/sample-agendas.json), 새 양식 항목은 [양식·DB 안내](docs/meeting-form-schema.md)를 참고하세요. ID·연도·분기는 서버가 생성합니다. 같은 안건번호가 있거나 한 건이라도 형식이 잘못되면 **전체 취소**됩니다. 파일당 최대 500건 / 2MB입니다.
 
-필수 문자열: `number`, `meeting`, `date`(YYYY-MM-DD), `region`, `field`, `title`, `request`, `status`.
+필수 문자열: `number`, `meeting`, `date`(YYYY-MM-DD), `region`(제안 시도), `field`(업무, 복수는 ` · `로 연결), `title`, `request`. `status`가 없거나 null이면 `미확인`으로 시작합니다.
 
-상태 값: `검토 중`, `일부 반영`, `반영 완료`, `미반영`. 선택 필드: `organization`, `situation`, `problem`, `effect`, `review`, `answer`, `department`, `implemented_at`, `keywords`, `source`(http/https 원문 URL).
+실제 반영 상태 값: `미확인`, `검토 중`, `일부 반영`, `반영 완료`, `미반영`. KERIS 검토 구분은 `review_status`에 `미검토`, `현행유지`, `협의필요`, `개선예정`으로 별도 저장합니다. 선택 필드: `organization`, `situation`, `problem`, `effect`, `review`, `answer`, `department`, `implemented_at`, `keywords`, `source`(http/https 원문 URL).
 
 JSON 가져오기는 신규 등록 방식입니다. 기존 안건 수정은 상세 화면의 ‘이 안건 수정’을 사용하세요. HWP·PDF·DOCX·Excel 원문 자동 파싱, 파일 보관, 원문 인증은 아직 구현하지 않았습니다.
 
 ## 운영 적용 전 남은 범위
 
 현재 서버는 Python 표준 라이브러리 HTTP 서버 기반의 **내부 시제품**입니다. 사용자별 로그인·열람 권한·감사 로그·로그인 시도 제한·대용량 검색·문서 자동 추출·실제 임베딩 검색은 후속 단계입니다. 읽기 API는 인증 없이 접근 가능하므로 내부 문서를 넣기 전에 네트워크 제한과 인증 프록시를 적용해야 합니다. 관리자 키는 쓰기 작업용이며 사용자 계정 체계를 대신하지 않습니다. 외부 공개 운영은 별도의 운영 서버 구성과 보안 검토 후 진행하세요.
+
+### 양식 브라우저 검증
+
+테스트 전용 DB로 37건 서버를 실행한 다음 별도 터미널에서 검증합니다. 테스트는 안건 한 건을 생성·수정·삭제하므로 사용자 DB 대신 전용 DB를 사용하세요.
+
+```bash
+PORT=8002 DATABASE_PATH=.test-artifacts/form.sqlite3 SEED_DATA_PATH=documents/2026-school-accounting-02/01-agendas-master-37.json ADMIN_TOKEN=form-test-only python3 -m agora.server
+# 별도 터미널 (Playwright 설치 후):
+BASE_URL=http://127.0.0.1:8002 CHROMIUM_PATH=/usr/bin/chromium node scripts/browser-form.cjs
+```
+
+`NODE_PATH` 등 Playwright 설치 경로 지정은 위 선택 브라우저 테스트 안내를 참고하세요. DB 이전·37건 가져오기·원문 보존·백업 복원·다중 업무 필터·KERIS/반영 상태 분리는 `python3 -m unittest discover -s tests -v`로 함께 검증합니다.

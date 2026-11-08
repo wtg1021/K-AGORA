@@ -2,6 +2,23 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "K-AGORA: 협의체 실제 자료 37건",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "agora.server",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "HOST": "127.0.0.1",
+        "PORT": "8000",
+        "DATABASE_PATH": "${workspaceFolder}/data/school-accounting-2026-02.sqlite3",
+        "SEED_DEMO": "true",
+        "ADMIN_TOKEN": "${input:adminToken}",
+        "SEED_DATA_PATH": "${workspaceFolder}/documents/2026-school-accounting-02/01-agendas-master-37.json"
+      }
+    },
+    {
       "name": "K-AGORA: 예시 데이터로 실행",
       "type": "debugpy",
       "request": "launch",

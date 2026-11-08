@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from agora.search import rank
 from agora.store import STATUSES, Store
+from agora.schema import REVIEW_STATUSES, BUSINESS_FIELDS, SUBMISSION_TYPES, field_values
 
 ROOT = Path(__file__).resolve().parent.parent
 MAX_BODY = 2 * 1024 * 1024
@@ -58,8 +59,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/meta':
             items = self.server.store.all()
             return self.send(200, {
-                'count': len(items), 'statuses': STATUSES, 'management_enabled': bool(self.server.admin_token),
-                **{key: sorted({a[key] for a in items}) for key in ('year', 'region', 'field')},
+                'count': len(items), 'statuses': STATUSES, 'review_statuses': REVIEW_STATUSES,
+                'business_fields': BUSINESS_FIELDS, 'submission_types': SUBMISSION_TYPES,
+                'management_enabled': bool(self.server.admin_token),
+                **{key: sorted({a[key] for a in items}) for key in ('year', 'region', 'organization')},
+                'field': sorted({v for a in items for v in field_values(a['field'])}),
                 'search_mode': '동의어 확장 + 텍스트 관련도 검색 (외부 AI 미사용)',
             })
         if path == '/api/agendas':
@@ -67,14 +71,16 @@ class Handler(BaseHTTPRequestHandler):
             if len(query) > 1000:
                 return self.send(400, {'error': '검색어는 1,000자 이하로 입력하세요.'})
             items = self.server.store.all()
-            for key in ('year', 'quarter', 'region', 'field', 'status'):
+            for key in ('year', 'quarter', 'region', 'field', 'status', 'review_status', 'submission_type', 'organization', 'meeting'):
                 value = params.get(key, [''])[0]
                 if value:
-                    items = [a for a in items if str(a[key]) == value]
+                    items = [a for a in items if value in field_values(a['field'])] if key == 'field' else [a for a in items if str(a[key]) == value]
             results = [dict(a, score=score, matched=matched) for a, score, matched in rank(items, query)]
             if query and results:
                 top = results[0]
-                answer = f"관련 안건 {len(results)}건을 찾았습니다. 가장 관련된 안건은 ‘{top['title']}’입니다. {top['meeting']} ({top['date']}, {top['region']})에서 논의되었고, 현재 상태는 {top['status']}입니다. 당시 답변: {top['answer'] or '등록된 답변이 없습니다.'}"
+                answer = f"관련 안건 {len(results)}건을 찾았습니다. 가장 관련된 안건은 ‘{top['title']}’입니다. {top['meeting']} ({top['date']}) · 제안기관: {top['organization'] or top['region']}. KERIS 검토 구분: {top['source_status'] or top['review_status']}. 실제 반영 상태: {top['status']}. 검토 내용: {top['review'] or top['answer'] or '등록된 검토 내용이 없습니다.'}"
+                if top['source_file']:
+                    answer += f"\n출처: {top['source_file']} · PDF {top['source_pages'] or '쪽수 미등록'}쪽. 자료집의 사전 검토의견이며 회의 후 확정 결과가 아닙니다."
             elif query:
                 answer = '일치하는 안건이 없습니다. 검색어를 줄이거나 조건을 변경해 보세요.'
             else:
@@ -123,10 +129,10 @@ class Handler(BaseHTTPRequestHandler):
     do_DELETE = mutate
 
 
-def create_server(host='127.0.0.1', port=8000, db=None, seed=False, token=''):
+def create_server(host='127.0.0.1', port=8000, db=None, seed=False, token='', seed_path=None):
     store = Store(db or ROOT / 'data' / 'agora.sqlite3')
     if seed:
-        store.seed(ROOT / 'data' / 'sample-agendas.json')
+        store.seed(seed_path or ROOT / 'data' / 'sample-agendas.json')
     server = ThreadingHTTPServer((host, port), Handler)
     server.store, server.admin_token = store, token
     return server
@@ -135,7 +141,7 @@ def create_server(host='127.0.0.1', port=8000, db=None, seed=False, token=''):
 def main():
     server = create_server(os.getenv('HOST', '127.0.0.1'), int(os.getenv('PORT', '8000')),
                            os.getenv('DATABASE_PATH'), os.getenv('SEED_DEMO', 'true').lower() == 'true',
-                           os.getenv('ADMIN_TOKEN', ''))
+                           os.getenv('ADMIN_TOKEN', ''), os.getenv('SEED_DATA_PATH') or None)
     print(f'K-AGORA listening on {server.server_address}; management={bool(server.admin_token)}', flush=True)
     try:
         server.serve_forever()
