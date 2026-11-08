@@ -16,10 +16,13 @@
         "SEED_DEMO": "true",
         "ADMIN_TOKEN": "${input:adminToken}",
         "SEED_DATA_PATH": "${workspaceFolder}/documents/2026-school-accounting-02/01-agendas-master-37.json"
-      }
+      },
+      "args": [
+        "--real"
+      ]
     },
     {
-      "name": "K-AGORA: 예시 데이터로 실행",
+      "name": "K-AGORA: 테스트 전용 (예시 8건)",
       "type": "debugpy",
       "request": "launch",
       "module": "agora.server",
@@ -31,8 +34,12 @@
         "PORT": "8000",
         "DATABASE_PATH": "${workspaceFolder}/data/agora.sqlite3",
         "SEED_DEMO": "true",
-        "ADMIN_TOKEN": ""
-      }
+        "ADMIN_TOKEN": "",
+        "SEED_DATA_PATH": "${workspaceFolder}/data/sample-agendas.json"
+      },
+      "args": [
+        "--demo"
+      ]
     },
     {
       "name": "K-AGORA: 관리자 모드",
@@ -45,10 +52,13 @@
       "env": {
         "HOST": "127.0.0.1",
         "PORT": "8000",
-        "DATABASE_PATH": "${workspaceFolder}/data/agora.sqlite3",
+        "DATABASE_PATH": "${workspaceFolder}/data/school-accounting-2026-02.sqlite3",
         "SEED_DEMO": "true",
         "ADMIN_TOKEN": "${input:adminToken}"
-      }
+      },
+      "args": [
+        "--real"
+      ]
     },
     {
       "name": "K-AGORA: 실제 자료용 빈 DB",

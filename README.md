@@ -18,6 +18,19 @@
 
 **예시 실행은 가상 안건 8건, 실제 자료 실행은 첨부 자료집의 안건 37건입니다.** 자료집의 사전 검토의견을 회의 후 확정 결과로 간주하지 않습니다. 검색은 한국어 동의어 확장과 텍스트 관련도 계산입니다. 임베딩·LLM 기반 의미 검색이나 생성형 AI는 사용하지 않습니다. 점수는 정확도 백분율이 아니며 낮은 점수의 결과는 담당자가 확인해야 합니다. 답변은 검색 1위 안건의 저장된 내용을 조합합니다.
 
+## 가장 간단한 실행
+
+VS Code에서 K-AGORA 폴더를 열고 서버를 중지한 다음 PowerShell 터미널에서 아래 두 줄을 실행하세요.
+
+```powershell
+git pull --ff-only
+py -3.12 -m agora.server --real
+```
+
+브라우저에서 **http://127.0.0.1:8000** 을 새로고침하면 됩니다. `--real`은 이전에 설정한 DB 환경변수와 관계없이 실제 자료 DB를 엽니다. 최초 37건을 등록하고 이후에는 그 DB의 수정·삭제 내용을 유지합니다. 기존 DB를 지우지 않습니다.
+
+일반 `python3 -m agora.server` 실행도 환경변수를 별도로 지정하지 않았다면 실제 자료 DB가 기본입니다. 테스트 8건은 `python3 -m agora.server --demo`로 명시해서 실행합니다.
+
 ## 첨부 협의체 양식과 실제 자료 37건
 
 첨부 자료집에 맞춰 **기관명·업무(복수 선택)·대상 메뉴·현황·문제점·개선방안·기대효과·추가 의견·KERIS 검토의견·출처**를 구분합니다. KERIS 사전 검토(현행유지/협의필요/개선예정)와 실제 반영 상태는 별도로 관리합니다.
@@ -45,8 +58,8 @@ VS Code에서 이 프로젝트를 열고 F5로 실행할 수 있습니다. Pytho
 | 실행 구성 | 용도 |
 | --- | --- |
 | `K-AGORA: 협의체 실제 자료 37건` | 첨부 자료집 양식의 실제 37건을 별도 DB에서 실행. 관리자 키 입력 |
-| `K-AGORA: 예시 데이터로 실행` | 가상 안건 8건으로 검색 화면 확인. 관리 기능은 꺼짐 |
-| `K-AGORA: 관리자 모드` | 예시 DB에서 안건 등록·수정·삭제 및 JSON 입출력. 시작할 때 관리자 키 입력 |
+| `K-AGORA: 테스트 전용 (예시 8건)` | 가상 안건 8건으로 검색 화면 확인. 관리 기능은 꺼짐 |
+| `K-AGORA: 관리자 모드` | 실제 자료 DB에서 안건 등록·수정·삭제 및 JSON 입출력. 시작할 때 관리자 키 입력 |
 | `K-AGORA: 실제 자료용 빈 DB` | 별도 `data/local-agendas.sqlite3` 사용. 예시 데이터 없이 시작하며 관리자 키 입력 |
 
 터미널에 `K-AGORA listening on ...`이 표시되면 브라우저에서 **http://127.0.0.1:8000** 을 여세요. VS Code는 코드 편집·서버 실행에 사용하고, 서비스 화면은 브라우저에서 확인합니다. 예시 질문 **법인카드 일괄 등록**을 눌러 검색과 상세정보를 확인하세요.
@@ -95,7 +108,7 @@ cd K-AGORA
 
 ```powershell
 py -3.12 --version
-py -3.12 -m agora.server
+py -3.12 -m agora.server --demo
 ```
 
 `py`가 없지만 `python --version`에서 3.12 이상이 확인되면 `python -m agora.server`를 사용해도 됩니다.
@@ -104,7 +117,7 @@ py -3.12 -m agora.server
 
 ```bash
 python3 --version
-python3 -m agora.server
+python3 -m agora.server --demo
 ```
 
 터미널에 `K-AGORA listening on ...`이 표시되면 브라우저 주소창에 **http://127.0.0.1:8000** 을 입력하세요. 처음 실행할 때 가상 안건 8건이 생성됩니다. ‘법인카드 일괄 등록’ 예시 질문을 눌러 검색 결과와 상세정보를 확인할 수 있습니다.
@@ -163,7 +176,7 @@ SEED_DEMO=false DATABASE_PATH=data/local-agendas.sqlite3 python3 -m agora.server
 
 ### 6. 데이터 저장·백업
 
-- 기본 데이터 파일: `data/agora.sqlite3` (별도 경로를 지정했다면 해당 파일)
+- 기본 데이터 파일: `data/school-accounting-2026-02.sqlite3` (`--demo`는 `data/agora.sqlite3`) (별도 경로를 지정했다면 해당 파일)
 - 간단한 백업: 관리 화면에서 관리자 키 입력 후 **‘전체 JSON 내보내기’**
 - JSON 복구: 빈 DB로 실행한 다음 **‘JSON 가져오기’**. 안건번호가 겹치면 전체 취소되므로 기존 DB에 그대로 복구하지 마세요.
 - DB 파일 자체를 복사하려면 **서버를 먼저 종료**한 뒤 복사합니다. 복구도 서버를 종료한 상태에서 진행하세요.
@@ -175,9 +188,9 @@ SEED_DEMO=false DATABASE_PATH=data/local-agendas.sqlite3 python3 -m agora.server
 | --- | --- | --- |
 | `HOST` | `127.0.0.1` | 현재 PC에서만 접근하는 기본 바인딩 |
 | `PORT` | `8000` | 서버 포트 |
-| `DATABASE_PATH` | `data/agora.sqlite3` | SQLite 파일 위치. 상대 경로는 실행 폴더 기준 |
+| `DATABASE_PATH` | `data/school-accounting-2026-02.sqlite3` | SQLite 파일 위치. 상대 경로는 실행 폴더 기준 |
 | `SEED_DEMO` | `true` | 첫 초기화 때 초기 자료 등록 (`false`이면 등록 안 함) |
-| `SEED_DATA_PATH` | 미설정 | 최초 초기화 자료 JSON 경로. 미설정 시 예시 8건, 실제 자료 구성은 `documents/2026-school-accounting-02/01-agendas-master-37.json` |
+| `SEED_DATA_PATH` | 실제 자료 master JSON | 최초 초기화 자료 JSON 경로. 기본값은 `documents/2026-school-accounting-02/01-agendas-master-37.json` |
 | `ADMIN_TOKEN` | 미설정 | 없으면 관리 API 사용 불가 |
 
 ### 자주 생기는 문제
@@ -220,7 +233,7 @@ GitHub push/PR에서도 같은 테스트를 실행하도록 Actions 워크플로
 
 ```bash
 # 터미널 1: 버전 관리에서 제외되는 테스트 DB를 사용
-DATABASE_PATH=.test-artifacts/browser.sqlite3 ADMIN_TOKEN=ui-test-only python3 -m agora.server
+DATABASE_PATH=.test-artifacts/browser.sqlite3 SEED_DATA_PATH=data/sample-agendas.json ADMIN_TOKEN=ui-test-only python3 -m agora.server
 
 # 터미널 2: 별도 임시 디렉터리에 Playwright 설치
 npm install --prefix /tmp/k-agora-browser-tools playwright@1.62.0

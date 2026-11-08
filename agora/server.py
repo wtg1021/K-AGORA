@@ -1,4 +1,5 @@
 """Dependency-free local/internal prototype server."""
+import argparse
 import hmac
 import json
 import os
@@ -138,11 +139,29 @@ def create_server(host='127.0.0.1', port=8000, db=None, seed=False, token='', se
     return server
 
 
-def main():
-    server = create_server(os.getenv('HOST', '127.0.0.1'), int(os.getenv('PORT', '8000')),
-                           os.getenv('DATABASE_PATH'), os.getenv('SEED_DEMO', 'true').lower() == 'true',
-                           os.getenv('ADMIN_TOKEN', ''), os.getenv('SEED_DATA_PATH') or None)
+def startup_options(argv=None):
+    parser = argparse.ArgumentParser(description='K-AGORA 협의체 안건 서버 (기본: 실제 자료 37건)')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--real', action='store_true', help='기존 DB 환경변수와 관계없이 실제 자료 DB로 실행')
+    mode.add_argument('--demo', action='store_true', help='테스트용 예시 8건 DB로 실행')
+    args = parser.parse_args(argv)
+    real_db = ROOT / 'data' / 'school-accounting-2026-02.sqlite3'
+    real_seed = ROOT / 'documents' / '2026-school-accounting-02' / '01-agendas-master-37.json'
+    db = os.getenv('DATABASE_PATH') or real_db
+    seed_path = os.getenv('SEED_DATA_PATH') or real_seed
+    seed = os.getenv('SEED_DEMO', 'true').lower() == 'true'
+    if args.real:
+        db, seed_path, seed = real_db, real_seed, True
+    elif args.demo:
+        db, seed_path, seed = ROOT / 'data' / 'agora.sqlite3', ROOT / 'data' / 'sample-agendas.json', True
+    return dict(host=os.getenv('HOST', '127.0.0.1'), port=int(os.getenv('PORT', '8000')),
+                db=db, seed=seed, token=os.getenv('ADMIN_TOKEN', ''), seed_path=seed_path)
+
+
+def main(argv=None):
+    server = create_server(**startup_options(argv))
     print(f'K-AGORA listening on {server.server_address}; management={bool(server.admin_token)}', flush=True)
+    print(f'Database: {server.store.path} | Registered agendas: {len(server.store.all())}', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
