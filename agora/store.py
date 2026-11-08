@@ -85,7 +85,7 @@ class Store:
             if db.execute("SELECT 1 FROM settings WHERE key='initialized'").fetchone():
                 return
             if not db.execute('SELECT 1 FROM agendas LIMIT 1').fetchone():
-                for source in json.loads(Path(path).read_text()):
+                for source in json.loads(Path(path).read_text(encoding='utf-8')):
                     item = validate(source)
                     db.execute('INSERT INTO agendas VALUES (?,?,?)', (uuid4().hex, item['number'], json.dumps(item, ensure_ascii=False)))
             db.execute("INSERT INTO settings VALUES ('initialized','true')")

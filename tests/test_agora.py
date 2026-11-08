@@ -3,6 +3,7 @@ import sqlite3
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -11,7 +12,22 @@ from agora.search import rank
 from agora.server import ROOT, create_server
 from agora.store import Store
 
-SAMPLES = json.loads((ROOT / 'data/sample-agendas.json').read_text())
+SAMPLES = json.loads((ROOT / 'data/sample-agendas.json').read_text(encoding='utf-8'))
+
+class EncodingTests(unittest.TestCase):
+    def test_seed_with_windows_cp949_default(self):
+        read_text = Path.read_text
+
+        def windows_read_text(path, encoding=None, errors=None):
+            return read_text(path, encoding=encoding or 'cp949', errors=errors)
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = Store(Path(directory) / 'windows.sqlite3')
+            with patch.object(Path, 'read_text', windows_read_text):
+                store.seed(ROOT / 'data/sample-agendas.json')
+            self.assertEqual(len(store.all()), len(SAMPLES))
+            actual = {a['number']: a['title'] for a in store.all()}
+            self.assertEqual(actual, {a['number']: a['title'] for a in SAMPLES})
 
 class SearchTests(unittest.TestCase):
     def setUp(self):
