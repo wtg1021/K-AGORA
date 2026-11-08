@@ -46,14 +46,14 @@ def rank(agendas, query):
     documents = []
     for a in agendas:
         title = terms(a['title'])
-        body = terms(' '.join(str(a.get(f, '')) for f in ('title', 'keywords', 'situation', 'problem', 'request', 'effect', 'review', 'answer', 'field', 'organization', 'target_menu', 'improvement_plan', 'additional_opinions', 'review_status', 'source_status', 'source_agenda_number')))
+        body = terms(' '.join(str(a.get(f, '')) for f in ('title', 'keywords', 'situation', 'problem', 'request', 'effect', 'review', 'answer', 'field', 'organization', 'target_menu', 'improvement_plan', 'additional_opinions', 'review_status', 'source_status', 'source_agenda_number', 'sr_number')))
         documents.append((a, title, body))
     frequency = Counter(t for _, _, body in documents for t in body)
     result = []
     for a, title, body in documents:
         matched = query_terms & body
         # Substring matches accommodate Korean compounds without a tokenizer model.
-        compact = normalize(' '.join(str(a.get(f, '')) for f in ('title', 'request', 'keywords', 'answer', 'organization', 'target_menu', 'improvement_plan', 'additional_opinions', 'review_status', 'source_status', 'source_agenda_number')))
+        compact = normalize(' '.join(str(a.get(f, '')) for f in ('title', 'request', 'keywords', 'answer', 'organization', 'target_menu', 'improvement_plan', 'additional_opinions', 'review_status', 'source_status', 'source_agenda_number', 'sr_number')))
         matched |= {t for t in query_terms if not t.startswith('concept') and t in compact}
         if not matched:
             continue

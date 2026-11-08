@@ -6,8 +6,28 @@ STATUSES = ('미확인', '검토 중', '일부 반영', '반영 완료', '미반
 REVIEW_STATUSES = ('미검토', '현행유지', '협의필요', '개선예정')
 BUSINESS_FIELDS = ('사업', '예산', '수입', '지출', '계약', '세무', '세입세출외현금', '예산결산', '발전기금', '기타')
 SUBMISSION_TYPES = ('미분류', '협의체', '교육부', 'SR', '간담회', '기타')
-FIELDS = ('number', 'meeting', 'date', 'region', 'organization', 'field', 'title', 'situation', 'problem', 'request', 'effect', 'review', 'answer', 'department', 'status', 'implemented_at', 'keywords', 'source', 'meeting_location', 'meeting_region', 'submission_type', 'source_agenda_number', 'target_menu', 'improvement_plan', 'additional_opinions', 'review_status', 'source_status', 'list_status', 'source_file', 'source_pages', 'review_notes')
+FIELDS = ('number', 'meeting', 'date', 'region', 'organization', 'field', 'title', 'situation', 'problem', 'request', 'effect', 'review', 'answer', 'department', 'status', 'implemented_at', 'keywords', 'source', 'meeting_location', 'meeting_region', 'submission_type', 'source_agenda_number', 'target_menu', 'improvement_plan', 'additional_opinions', 'review_status', 'source_status', 'list_status', 'source_file', 'source_pages', 'review_notes', 'sr_number')
 REQUIRED = ('number', 'meeting', 'date', 'region', 'field', 'title', 'request', 'status')
+
+SR_PATTERN = re.compile(r'(?<![A-Za-z0-9])SR\s*[-–—]?\s*(\d+)(?![A-Za-z0-9])', re.IGNORECASE)
+
+def separate_sr_number(organization, sr_number=''):
+    numbers = []
+    for value in re.split(r'[,;/\n]+', sr_number):
+        if not value.strip():
+            continue
+        match = re.fullmatch(r'(?:SR\s*[-–—]?\s*)?(\d+)', value.strip(), re.IGNORECASE)
+        if not match:
+            raise ValueError('SR 번호는 SR-387379 형식으로 입력하세요. 여러 번호는 쉼표로 구분하세요.')
+        numbers.append('SR-' + match[1])
+    numbers.extend('SR-' + match[1] for match in SR_PATTERN.finditer(organization))
+    if SR_PATTERN.search(organization):
+        organization = SR_PATTERN.sub('', organization)
+        organization = re.sub(r'([（(])\s*[,;/]+\s*', r'\1', organization)
+        organization = re.sub(r'\s*[,;/]+\s*([）)])', r'\1', organization)
+        organization = re.sub(r'[（(]\s*[）)]', '', organization)
+        organization = re.sub(r'[ \t]{2,}', ' ', organization).strip(' ,;/')
+    return organization, ', '.join(dict.fromkeys(numbers))
 
 def field_values(value):
     return [part.strip() for part in re.split(r'\s*[·,、]\s*', value) if part.strip()]

@@ -12,7 +12,7 @@ const submissionTypes = ['미분류','협의체','교육부','SR','간담회','�
 const splitFields = value => String(value||'').split(/[·,、]/).map(v=>v.trim()).filter(Boolean);
 const groups = [
  ['회의 정보', [['number','관리번호',true],['source_agenda_number','원문 안건번호'],['meeting','협의체명 / 회차',true],['date','개최일',true,'date'],['meeting_location','개최 장소'],['meeting_region','개최 시·도']]],
- ['제안 정보', [['title','요구사항명',true],['organization','기관명'],['region','제안 시·도',true],['submission_type','구분',false,'submission'],['field','업무 (복수 선택)',true,'business']]],
+ ['제안 정보', [['title','요구사항명',true],['organization','기관명'],['sr_number','SR 번호'],['region','제안 시·도',true],['submission_type','구분',false,'submission'],['field','업무 (복수 선택)',true,'business']]],
  ['요구사항', [['request','요구사항',true,'textarea'],['target_menu','대상 메뉴',false,'textarea'],['situation','현황',false,'textarea'],['problem','문제점',false,'textarea'],['improvement_plan','개선방안',false,'textarea'],['effect','기대효과',false,'textarea'],['additional_opinions','추가 의견',false,'textarea']]],
  ['KERIS 사전 검토', [['review_status','KERIS 검토 구분',false,'review'],['source_status','상세 본문 검토 표기 (원문)'],['list_status','요약 목록 검토 표기 (원문)'],['review','KERIS 검토의견 내용',false,'textarea']]],
  ['사후 처리 · 반영 현황', [['status','실제 반영 상태',true,'select'],['department','담당 부서'],['implemented_at','반영 시점'],['answer','회의 후 확정 답변',false,'textarea']]],
@@ -32,6 +32,7 @@ for(const [heading,entries] of groups){
    const group=node('fieldset',undefined,'business-field wide');group.append(node('legend',label+' *'),box,node('small','해당하는 업무를 모두 선택하세요. 기존 업무명도 유지됩니다.'));grid.append(group);continue;
   }
   input.required=!!required;
+  if(name==='sr_number')input.placeholder='SR-387379 (없으면 공란)';
   if(name==='target_menu')input.placeholder='지출관리 > 지출처리 > 지출품의 > 품의등록/품의목록';
   if(input.tagName==='INPUT')input.type=type||'text';
   if(choices)choices.forEach(value=>input.append(new Option(value,value)));
@@ -113,7 +114,7 @@ async function detail(id){
   const heading=node('div',undefined,'form-heading');heading.append(node('span',a.source_agenda_number||a.number,'source-number'),node('h2',a.title,'detail-title'));root.append(heading);
   root.append(node('p',`${a.meeting} · ${a.date}${a.meeting_location?' · '+a.meeting_location:''}`,'detail-meta'));
   const info=node('dl',undefined,'form-info');
-  for(const [label,value] of [['업무',a.field],['기관명',a.organization],['구분',a.submission_type],['제안 시·도',a.region],['개최 시·도',a.meeting_region],['관리번호',a.number]]){info.append(node('dt',label),node('dd',value||'미등록'));}root.append(info);
+  for(const [label,value] of [['업무',a.field],['기관명',a.organization],['SR 번호',a.sr_number],['구분',a.submission_type],['제안 시·도',a.region],['개최 시·도',a.meeting_region],['관리번호',a.number]]){info.append(node('dt',label),node('dd',label==='SR 번호'?(value||''):(value||'미등록')));}root.append(info);
   const section=(label,value,cls='')=>{const box=node('section',undefined,'form-section '+cls);box.append(node('h3',label),node('p',cls==='source-text'?(value||'미등록'):readable(value||'미등록',a)));return box;};
   root.append(section('요구사항',a.request,'request-section'),section('대상 메뉴',AgoraText.menu(a.target_menu)));
   const current=node('div',undefined,'detail-grid');current.append(section('현황',a.situation),section('문제점',a.problem));root.append(current);
@@ -132,7 +133,7 @@ async function detail(id){
   if(Array.isArray(pages))for(const page of pages){source.append(section('PDF '+page.pdf_page+'쪽',page.text,'source-text'));}
   root.append(source);
   const actions=node('div',undefined,'detail-actions'),copy=node('button','검토 내용 복사'),edit=node('button','이 안건 수정');
-  copy.onclick=async()=>{try{await navigator.clipboard.writeText(fields.map(([key,label])=>`${label}: ${key==='target_menu'?(AgoraText.menu(a[key])||'미등록'):readable(a[key]||'미등록',a)}`).join('\n'));copy.textContent='복사했습니다';}catch{copy.textContent='브라우저에서 복사를 허용해 주세요';}};
+  copy.onclick=async()=>{try{await navigator.clipboard.writeText(fields.map(([key,label])=>`${label}: ${key==='sr_number'?(a[key]||''):key==='target_menu'?(AgoraText.menu(a[key])||'미등록'):readable(a[key]||'미등록',a)}`).join('\n'));copy.textContent='복사했습니다';}catch{copy.textContent='브라우저에서 복사를 허용해 주세요';}};
   edit.onclick=()=>{$('#detail-dialog').close();openEditor(a);};actions.append(copy,edit);root.append(actions);$('#detail-dialog').showModal();
  }catch(e){$(catalogue.active?'#all-feedback':'#feedback').textContent=e.message;}
 }
@@ -222,7 +223,7 @@ function renderCatalogue(){
  const form=$('#all-filters'),keyword=form.elements.keyword.value.trim().normalize('NFKC').toLocaleLowerCase('ko');
  const items=catalogue.items.filter(a=>{
   for(const key of ['meeting','year','quarter','region','organization','field','status','review_status','submission_type']){const value=form.elements[key].value;if(value&&(key==='field'?!splitFields(a.field).includes(value):String(a[key])!==value))return false;}
-  return !keyword||['number','title','meeting','region','field','request','review','answer','keywords','target_menu','improvement_plan','additional_opinions','source_agenda_number'].some(key=>String(a[key]||'').normalize('NFKC').toLocaleLowerCase('ko').includes(keyword));
+  return !keyword||['number','title','meeting','region','field','request','review','answer','keywords','target_menu','improvement_plan','additional_opinions','source_agenda_number','sr_number'].some(key=>String(a[key]||'').normalize('NFKC').toLocaleLowerCase('ko').includes(keyword));
  });
  const sort=$('#all-sort').value;
  items.sort((a,b)=>{

@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from agora.schema import (STATUSES, REVIEW_STATUSES, BUSINESS_FIELDS, SUBMISSION_TYPES,
-                          FIELDS, REQUIRED, field_values, convert_import, validate_provenance)
+                          FIELDS, REQUIRED, field_values, convert_import, validate_provenance, separate_sr_number)
 
 def validate(data):
     if not isinstance(data, dict):
@@ -30,6 +30,7 @@ def validate(data):
     except ValueError as exc:
         raise ValueError('개최일은 YYYY-MM-DD 형식이어야 합니다.') from exc
     result['date'] = parsed.isoformat()
+    result['organization'], result['sr_number'] = separate_sr_number(result['organization'], result['sr_number'])
     if result['status'] not in STATUSES:
         raise ValueError('올바른 반영 상태를 선택하세요.')
     if result['source'] and not result['source'].startswith(('https://', 'http://')):
@@ -52,12 +53,12 @@ class Store:
         with self.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS agendas (id TEXT PRIMARY KEY, number TEXT UNIQUE NOT NULL, content TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)')
-            if db.execute('PRAGMA user_version').fetchone()[0] < 2:
+            if db.execute('PRAGMA user_version').fetchone()[0] < 3:
                 # Transactional in-place migration: retain IDs, numbers, text, and old statuses.
                 for id_, content in db.execute('SELECT id,content FROM agendas').fetchall():
                     item = validate(json.loads(content))
                     db.execute('UPDATE agendas SET content=? WHERE id=?', (json.dumps(item, ensure_ascii=False), id_))
-                db.execute('PRAGMA user_version=2')
+                db.execute('PRAGMA user_version=3')
 
     def connect(self):
         db = sqlite3.connect(self.path, timeout=15)

@@ -70,7 +70,7 @@ class MeetingFormTests(unittest.TestCase):
         self.assertEqual(item['target_menu'], '')
         self.assertEqual(Store(self.path).get('old-id'), item)
         with migrated.connect() as db:
-            self.assertEqual(db.execute('PRAGMA user_version').fetchone()[0], 2)
+            self.assertEqual(db.execute('PRAGMA user_version').fetchone()[0], 3)
     def test_invalid_new_fields_are_rejected_before_import(self):
         for update in ({'review_status': '반영 완료'}, {'submission_type': '없는 구분'}, {'source_record': []}, {'target_menu': ['잘못된 타입']}):
             with self.subTest(update=update), self.assertRaises(ValueError):
@@ -109,6 +109,12 @@ class MeetingAPITests(unittest.TestCase):
         self.assertEqual(meta['count'], 37)
         self.assertIn('계약', meta['field'])
         self.assertNotIn('지출 · 계약', meta['field'])
+    def test_sr_number_search_uses_separate_field(self):
+        result = self.get('/api/agendas?' + urlencode({'q': 'SR-387379'}))
+        self.assertEqual(result['items'][0]['source_agenda_number'], '35')
+        self.assertEqual(result['items'][0]['organization'], '인천광역시교육청')
+        self.assertEqual(result['items'][0]['sr_number'], 'SR-387379')
+
     def test_search_identifies_pre_review_and_source(self):
         result = self.get('/api/agendas?' + urlencode({'q': '학부모부담금 신용카드 수수료'}))
         self.assertEqual(result['items'][0]['source_agenda_number'], '1')
