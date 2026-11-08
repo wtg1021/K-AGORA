@@ -29,7 +29,7 @@ async function api(path, options = {}) {
 function renderHistory() {
  const list = $('#history'); list.replaceChildren();
  if (!history.length) list.append(node('li','아직 검색 기록이 없습니다.','empty-history'));
- history.forEach(q => { const li=node('li');const b=node('button','↳  '+q);b.title=q;b.onclick=()=>search(q);li.append(b);list.append(li); });
+ history.forEach(q => { const li=node('li');const b=node('button','↳  '+q);b.title=q;b.onclick=()=>{navigate('search');search(q);};li.append(b);list.append(li); });
  try { localStorage.setItem('agora-history',JSON.stringify(history)); } catch { /* unavailable storage */ }
 }
 async function metadata() {
@@ -42,6 +42,8 @@ async function metadata() {
   values.forEach(value=>select.append(new Option(key==='year'?value+'년':value,value)));
   select.value=old;
  }
+ catalogue.dirty=true;
+ if(catalogue.active)await loadCatalogue();
  $('#manage').title=meta.management_enabled?'안건 등록·수정·가져오기':'읽기 전용 실행 중: ADMIN_TOKEN 설정 후 관리 가능';
 }
 async function search(query=state.query, remember=false) {
@@ -88,7 +90,7 @@ async function detail(id){
   const actions=node('div',undefined,'detail-actions'),copy=node('button','검토 내용 복사'),edit=node('button','이 안건 수정');
   copy.onclick=async()=>{try{await navigator.clipboard.writeText(fields.map(([key,label])=>`${label}: ${a[key]||'미등록'}`).join('\n'));copy.textContent='복사했습니다';}catch{copy.textContent='브라우저에서 복사를 허용해 주세요';}};
   edit.onclick=()=>{$('#detail-dialog').close();openEditor(a);};actions.append(copy,edit);root.append(grid,actions);$('#detail-dialog').showModal();
- }catch(e){$('#feedback').textContent=e.message;}
+ }catch(e){$(catalogue.active?'#all-feedback':'#feedback').textContent=e.message;}
 }
 function openEditor(a=null){
  const form=$('#agenda-form');form.reset();form.elements.id.value=a?a.id:'';
@@ -100,7 +102,7 @@ $('#search-form').onsubmit=e=>{e.preventDefault();search($('#query').value,true)
 $('#query').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();search($('#query').value,true);}};
 $('#filters').onchange=()=>search();
 $('#reset-filters').onclick=()=>{$('#filters').reset();search();};
-$('#new-search').onclick=()=>{$('#filters').reset();search('');$('#query').focus();};
+$('#new-search').onclick=()=>{navigate('search');$('#filters').reset();search('');$('#query').focus();};
 $('#clear-history').onclick=()=>{history=[];renderHistory();};
 document.querySelectorAll('[data-query]').forEach(b=>b.onclick=()=>search(b.dataset.query,true));
 $('#load-more').onclick=()=>{state.shown+=6;renderCards();};
@@ -122,5 +124,85 @@ $('#import-file').onchange=async e=>{
 $('#export').onclick=async()=>{try{const items=await api('/api/export',{auth:true});const url=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));const a=node('a');a.href=url;a.download='k-agora-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){$('#manage-feedback').textContent=e.message;}};
 // Keep management available on small screens where the sidebar helper is hidden.
 const mobileManage=node('button','안건 등록·관리','text-button');mobileManage.onclick=()=>openEditor();$('footer').append(mobileManage);
+
+// The catalogue has its own filters, ordering, and fetch state.
+const catalogue={active:false,dirty:true,items:[],serial:0};
+function navigate(view){
+ if(location.hash!=='#'+view)location.hash=view;
+ showView(view);
+}
+function showView(view){
+ const all=view==='all';const changed=catalogue.active!==all;catalogue.active=all;
+ $('#search-view').hidden=all;$('#all-view').hidden=!all;
+ $('#page-name').textContent=all?'전체 안건':'안건 검색';
+ document.title='K-AGORA · '+(all?'전체 협의체 안건':'협의체 안건 검색');
+ for(const [id,active] of [['#nav-search',!all],['#nav-all',all]]){
+  const link=$(id);link.classList.toggle('active-nav',active);
+  if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+ }
+ if(all&&catalogue.dirty)loadCatalogue();
+ if(changed){window.scrollTo(0,0);if(all)$('#all-heading').focus({preventScroll:true});}
+}
+async function loadCatalogue(){
+ const serial=++catalogue.serial;
+ $('#all-feedback').textContent='전체 안건을 불러오고 있습니다…';$('#all-count').textContent='불러오는 중…';
+ $('#all-table-wrap').hidden=true;$('#all-empty').hidden=true;$('#all-retry').hidden=true;
+ try{
+  const data=await api('/api/agendas');if(serial!==catalogue.serial)return;
+  catalogue.items=data.items;catalogue.dirty=false;
+  for(const key of ['meeting','year','region','field','status']){
+   const select=$('#all-filters').elements[key],old=select.value;
+   const values=[...new Set(data.items.map(a=>String(a[key])))].sort((a,b)=>key==='year'?Number(b)-Number(a):a.localeCompare(b,'ko',{numeric:true}));
+   while(select.options.length>1)select.remove(1);
+   values.forEach(v=>select.append(new Option(key==='year'?v+'년':v,v)));select.value=values.includes(old)?old:'';
+  }
+  const summary=$('#all-summary');summary.replaceChildren();
+  for(const [label,count] of [['전체 안건',data.items.length],...statuses.map(status=>[status,data.items.filter(a=>a.status===status).length])]){
+   const card=node('div',undefined,'summary-item');card.append(node('span',label),node('strong',count+'건'));summary.append(card);
+  }
+  $('#all-feedback').textContent='';renderCatalogue();
+ }catch(e){
+  if(serial!==catalogue.serial)return;
+  catalogue.dirty=true;$('#all-rows').replaceChildren();$('#all-summary').replaceChildren();
+  $('#all-count').textContent='목록을 불러오지 못했습니다.';$('#all-feedback').textContent=e.message;$('#all-retry').hidden=false;
+ }
+}
+function renderCatalogue(){
+ if(catalogue.dirty)return;
+ const form=$('#all-filters'),keyword=form.elements.keyword.value.trim().normalize('NFKC').toLocaleLowerCase('ko');
+ const items=catalogue.items.filter(a=>{
+  for(const key of ['meeting','year','quarter','region','field','status'])if(form.elements[key].value&&String(a[key])!==form.elements[key].value)return false;
+  return !keyword||['number','title','meeting','region','field','request','review','answer','keywords'].some(key=>String(a[key]||'').normalize('NFKC').toLocaleLowerCase('ko').includes(keyword));
+ });
+ const sort=$('#all-sort').value;
+ items.sort((a,b)=>{
+  if(sort==='date-desc')return b.date.localeCompare(a.date)||a.number.localeCompare(b.number,'ko',{numeric:true});
+  if(sort==='date-asc')return a.date.localeCompare(b.date)||a.number.localeCompare(b.number,'ko',{numeric:true});
+  const comparison=sort==='status'?statuses.indexOf(a.status)-statuses.indexOf(b.status):String(a[sort]).localeCompare(String(b[sort]),'ko',{numeric:true});
+  return comparison||b.date.localeCompare(a.date)||a.number.localeCompare(b.number,'ko',{numeric:true});
+ });
+ $('#all-count').replaceChildren(node('strong',items.length+'건'),document.createTextNode(' / 전체 '+catalogue.items.length+'건'));
+ const rows=$('#all-rows');rows.replaceChildren();
+ for(const a of items){
+  const row=node('tr');
+  for(const key of ['number','title','meeting','date','region','field','status']){
+   const cell=node('td');
+   if(key==='title'){const button=node('button',a.title,'table-title');button.onclick=()=>detail(a.id);cell.append(button);}
+   else if(key==='status')cell.append(badge(a.status));else cell.textContent=a[key];
+   row.append(cell);
+  }
+  rows.append(row);
+ }
+ $('#all-table-wrap').hidden=!items.length;$('#all-empty').hidden=!!items.length;
+}
+$('#all-filters').onsubmit=e=>{e.preventDefault();renderCatalogue();};
+$('#all-filters').oninput=()=>renderCatalogue();
+$('#all-filters').onchange=()=>renderCatalogue();
+$('#all-filters').onreset=()=>{setTimeout(()=>renderCatalogue(),0);};
+$('#all-sort').onchange=()=>renderCatalogue();
+$('#all-retry').onclick=()=>loadCatalogue();
+window.addEventListener('hashchange',()=>showView(location.hash==='#all'?'all':'search'));
+showView(location.hash==='#all'?'all':'search');
+
 renderHistory();
 (async()=>{try{await metadata();await search();}catch(e){$('#feedback').textContent='서버에 연결할 수 없습니다. '+e.message;$('#total-count').textContent='연결 실패';}})();
