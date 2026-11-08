@@ -1,6 +1,7 @@
 'use strict';
 const $ = (s) => document.querySelector(s);
 const node = (tag, text, cls) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; };
+const readable = (value,item) => AgoraText.format(value,{pdf:/\.pdf$/i.test(item?.source_file||'')});
 const state = {query: '', items: [], shown: 6, selected: null, serial: 0};
 let history = [];
 try { history = JSON.parse(localStorage.getItem('agora-history') || '[]'); if (!Array.isArray(history)) history = []; history = history.filter(x => typeof x === 'string').slice(0, 8); } catch { /* unavailable storage */ }
@@ -48,6 +49,8 @@ async function api(path, options = {}) {
  const response = await fetch(path, {...options, headers});
  const data = await response.json();
  if (!response.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.');
+ if(Array.isArray(data.items))AgoraText.registerItems(data.items);
+ else if(data.id)AgoraText.registerItems([data]);
  return data;
 }
 function renderHistory() {
@@ -80,7 +83,7 @@ async function search(query=state.query, remember=false) {
   state.items=data.items;state.shown=6;renderCards();
   $('#results-title').textContent=state.query?'검색 결과':'등록된 안건 둘러보기';
   $('#result-count').textContent=data.total;
-  $('#answer').textContent=data.answer;$('#answer').hidden=!state.query;
+  $('#answer').textContent=readable(data.answer,state.items[0]);$('#answer').hidden=!state.query;
   $('#feedback').textContent='';
   if(remember&&state.query){history=[state.query,...history.filter(q=>q!==state.query)].slice(0,8);renderHistory();}
  } catch(e) {if(serial===state.serial){$('#feedback').textContent='검색 실패: '+e.message;$('#results').replaceChildren();$('#answer').hidden=true;$('#load-more').hidden=true;$('#result-count').textContent='—';}} finally {if(serial===state.serial)$('#search-button').disabled=false;}
@@ -94,11 +97,11 @@ function renderCards(){
   top.append(node('span',state.query?`관련도 순위 ${String(i+1).padStart(2,'0')} · 검색 점수 ${a.score}`:a.number,'card-rank'),badge(a.status));
   const title=node('button',a.title,'card-title');title.onclick=()=>detail(a.id);
   const meta=node('div',undefined,'card-meta');[a.meeting,a.date,a.organization||a.region,a.field].forEach(t=>meta.append(node('span',t)));
-  const review=node('div',undefined,'review-line');review.append(node('strong','KERIS 검토의견'),node('span',a.review||a.answer||'아직 등록된 검토의견이 없습니다.'));
+  const review=node('div',undefined,'review-line');review.append(node('strong','KERIS 검토의견'),node('span',readable(a.review||a.answer||'아직 등록된 검토의견이 없습니다.',a)));
   if(a.review_status!=='미검토')top.append(badge(a.review_status));
   const bottom=node('div',undefined,'card-bottom'),open=node('button','안건 자세히 보기 ↗');open.onclick=()=>detail(a.id);
   bottom.append(node('span',state.query?'검색 근거: '+a.matched.join(' · '):a.number.startsWith('DEMO-')?'가상 예시 데이터':'등록 안건'),open);
-  c.append(top,title,meta,node('p',a.request,'card-summary'),review,bottom);list.append(c);
+  c.append(top,title,meta,node('p',readable(a.request,a),'card-summary'),review,bottom);list.append(c);
  });
  $('#load-more').hidden=state.shown>=state.items.length;
 }
@@ -110,17 +113,17 @@ async function detail(id){
   root.append(node('p',`${a.meeting} · ${a.date}${a.meeting_location?' · '+a.meeting_location:''}`,'detail-meta'));
   const info=node('dl',undefined,'form-info');
   for(const [label,value] of [['업무',a.field],['기관명',a.organization],['구분',a.submission_type],['제안 시·도',a.region],['개최 시·도',a.meeting_region],['관리번호',a.number]]){info.append(node('dt',label),node('dd',value||'미등록'));}root.append(info);
-  const section=(label,value,cls='')=>{const box=node('section',undefined,'form-section '+cls);box.append(node('h3',label),node('p',value||'미등록'));return box;};
+  const section=(label,value,cls='')=>{const box=node('section',undefined,'form-section '+cls);box.append(node('h3',label),node('p',cls==='source-text'?(value||'미등록'):readable(value||'미등록',a)));return box;};
   root.append(section('요구사항',a.request,'request-section'),section('대상 메뉴',a.target_menu));
   const current=node('div',undefined,'detail-grid');current.append(section('현황',a.situation),section('문제점',a.problem));root.append(current);
   for(const [key,label] of [['improvement_plan','개선방안'],['effect','기대효과'],['additional_opinions','추가 의견']])root.append(section(label,a[key]));
   const review=node('section',undefined,'form-section keris-section');const title=node('div',undefined,'review-heading');title.append(node('h3','KERIS 검토의견'),badge(a.review_status));review.append(title);
-  review.append(node('p',a.review||'등록된 검토의견이 없습니다.'));
+  review.append(node('p',readable(a.review||'등록된 검토의견이 없습니다.',a)));
   if(a.source_status)review.append(node('small','상세 본문 표기: '+a.source_status));
   if(a.list_status&&a.list_status!==a.source_status)review.append(node('p','확인 필요: 요약 목록은 ‘'+a.list_status+'’, 상세 본문은 ‘'+a.source_status+'’입니다.','source-warning'));
   if(a.source_file)review.append(node('small','자료집의 사전 검토의견입니다. 회의 후 확정 결과·실제 반영 상태와 구분해 확인하세요.'));
   root.append(review);
-  const result=node('section',undefined,'form-section');const resultTitle=node('div',undefined,'review-heading');resultTitle.append(node('h3','사후 처리 · 반영 현황'),badge(a.status));result.append(resultTitle,node('p',a.answer||'회의 후 확정 답변이 등록되지 않았습니다.'),node('small',`담당 부서: ${a.department||'미등록'} · 반영 시점: ${a.implemented_at||'미확인'}`));root.append(result);
+  const result=node('section',undefined,'form-section');const resultTitle=node('div',undefined,'review-heading');resultTitle.append(node('h3','사후 처리 · 반영 현황'),badge(a.status));result.append(resultTitle,node('p',readable(a.answer||'회의 후 확정 답변이 등록되지 않았습니다.',a)),node('small',`담당 부서: ${a.department||'미등록'} · 반영 시점: ${a.implemented_at||'미확인'}`));root.append(result);
   const source=node('details',undefined,'source-details');source.append(node('summary','출처 · 검수 메모 · 원문 텍스트'));
   source.append(section('원문 출처',(a.source_file||'파일명 미등록')+(a.source_pages?' / PDF '+a.source_pages+'쪽':'')),section('검수 메모',a.review_notes),section('핵심 키워드',a.keywords));
   if(a.source&&/^https?:\/\//.test(a.source)){const link=node('a','원문 URL 열기 ↗');link.href=a.source;link.target='_blank';link.rel='noopener noreferrer';source.append(link);}
@@ -128,7 +131,7 @@ async function detail(id){
   if(Array.isArray(pages))for(const page of pages){source.append(section('PDF '+page.pdf_page+'쪽',page.text,'source-text'));}
   root.append(source);
   const actions=node('div',undefined,'detail-actions'),copy=node('button','검토 내용 복사'),edit=node('button','이 안건 수정');
-  copy.onclick=async()=>{try{await navigator.clipboard.writeText(fields.map(([key,label])=>`${label}: ${a[key]||'미등록'}`).join('\n'));copy.textContent='복사했습니다';}catch{copy.textContent='브라우저에서 복사를 허용해 주세요';}};
+  copy.onclick=async()=>{try{await navigator.clipboard.writeText(fields.map(([key,label])=>`${label}: ${readable(a[key]||'미등록',a)}`).join('\n'));copy.textContent='복사했습니다';}catch{copy.textContent='브라우저에서 복사를 허용해 주세요';}};
   edit.onclick=()=>{$('#detail-dialog').close();openEditor(a);};actions.append(copy,edit);root.append(actions);$('#detail-dialog').showModal();
  }catch(e){$(catalogue.active?'#all-feedback':'#feedback').textContent=e.message;}
 }

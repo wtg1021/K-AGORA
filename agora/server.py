@@ -94,7 +94,7 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith('/api/agendas/'):
             item = self.server.store.get(path.rsplit('/', 1)[-1])
             return self.send(200, item) if item else self.send(404, {'error': '안건을 찾을 수 없습니다.'})
-        files = {'/': ('index.html', 'text/html; charset=utf-8'), '/app.js': ('app.js', 'text/javascript; charset=utf-8'), '/style.css': ('style.css', 'text/css; charset=utf-8')}
+        files = {'/': ('index.html', 'text/html; charset=utf-8'), '/text-format.js': ('text-format.js', 'text/javascript; charset=utf-8'), '/app.js': ('app.js', 'text/javascript; charset=utf-8'), '/style.css': ('style.css', 'text/css; charset=utf-8')}
         if path in files:
             name, mime = files[path]
             return self.send(200, (ROOT / 'static' / name).read_bytes(), mime)
